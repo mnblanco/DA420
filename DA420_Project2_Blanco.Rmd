@@ -1,0 +1,568 @@
+---
+title: "Project 2: Advertising and Promotion"
+author: "Marjorie Blanco"
+subtitle: DA 420
+output:
+  pdf_document:
+    fig_caption: yes
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lattice)
+library(sjPlot)
+library(car)
+library(knitr)
+library(kableExtra)
+library("gplots")
+```
+
+```{r, echo=FALSE}
+#http://www.sthda.com/english/wiki/r-plot-pch-symbols-the-different-point-shapes-available-in-r
+```
+
+# Predictive Model for Los Angeles Dodgers Promotion and Attendance
+
+```{r}
+dodgers <- read.csv("data/dodgers.csv")
+# Create new variable: attend_thousand 
+dodgers$attend_thousand <- dodgers$attend/1000
+```
+
+```{r}
+# Create ordered factors for days of week and month
+dodgers$day_of_week_ordered <- factor(dodgers$day_of_week, 
+                                      levels=c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                                      labels=c("Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"))
+
+dodgers$month_ordered <- factor(dodgers$month, 
+                                levels=c("APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT"),
+                                labels = c("April", "May", "June", "July", "Aug", "Sept", "Oct"))
+```
+
+## Dodgers Attendance by Day of Week Boxplot
+
+Management is intrested in determining the effect of average attendance by day of the week.
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ day_of_week_ordered, dodgers)
+summary(model_fit)
+```
+
+### Plot 
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Day of Week"}
+# attendance by day of week boxplot
+plot(dodgers$day_of_week_ordered, dodgers$attend_thousand, 
+     xlab = "Day of Week",
+     ylab = "Attendance (thousands)", 
+     col = "violet", las = 1)
+
+plotmeans(attend_thousand ~ day_of_week_ordered, data = dodgers,
+          xlab = "Day of week", ylab = "Attendance (thousands)",
+          main="Mean Plot with 95% CI") 
+
+# Compute the analysis of variance
+res.aov <- aov(attend_thousand ~ day_of_week_ordered, data = dodgers)
+summary(res.aov)
+```
+
+This plot indicates the average attandance (thousands) is highest on Tuesday and lowest on Monday.
+
+As the p-value is less than the significance level 0.05, we can conclude that there are significant differences between the day of week groups (highlighted with “*" in the model summary).
+
+```{r}
+kable(dodgers %>% select(day_of_week_ordered, attend_thousand) %>% group_by(day_of_week_ordered) %>% summarise(count = n(), mean=mean(attend_thousand), sd=sd(attend_thousand))) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## Dodgers Attendance by Month Boxplot
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ month_ordered, dodgers)
+summary(model_fit)
+```
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Month"}
+# attendance by month 
+plot(dodgers$month_ordered, dodgers$attend_thousand,
+     xlab = "Month", 
+     ylab = "Attendance (thousands)", 
+     col = "light blue", las = 1)
+
+plotmeans(attend_thousand ~ month_ordered, data = dodgers,
+          xlab = "Day of week", ylab = "Attendance (thousands)",
+          main="Mean Plot with 95% CI") 
+
+# Compute the analysis of variance
+res.aov <- aov(attend_thousand ~ month_ordered, data = dodgers)
+summary(res.aov)
+```
+
+This plot indicates the average attandance (thousands) is highest on June and lowest on October.
+
+As the p-value is less than the significance level 0.05, we can conclude that there are significant differences between the month groups (highlighted with “*" in the model summary).
+
+```{r, echo=FALSE}
+kable(dodgers %>% select(month_ordered, attend_thousand) %>% group_by(month_ordered) %>% summarise(count = n(), mean=mean(attend_thousand), sd=sd(attend_thousand))) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## Dodgers Attendance by Fireworks Boxplot
+
+Management is intrested in determining the effect of average attendance by fireworks promotion.
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ fireworks, dodgers)
+summary(model_fit)
+```
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Fireworks"}
+# attendance by month 
+plot(dodgers$fireworks, dodgers$attend_thousand,
+     xlab = "Fireworks", 
+     ylab = "Attendance (thousands)", 
+     col = "light blue", las = 1)
+
+plotmeans(attend_thousand ~ fireworks, data = dodgers,
+          xlab = "Day of week", ylab = "Attendance (thousands)",
+          main="Mean Plot with 95% CI") 
+
+# Compute the analysis of variance
+res.aov <- aov(attend_thousand ~ fireworks, data = dodgers)
+summary(res.aov)
+```
+
+```{r, echo=FALSE}
+kable(dodgers %>% select(fireworks, attend_thousand) %>% group_by(fireworks) %>% summarise(count = n(), mean=mean(attend_thousand), sd=sd(attend_thousand))) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+This plot indicates the average attandance (thousands) is highest about the same when fireworks and no fireworks extravaganza was offered.
+
+As the p-value is greater than the significance level 0.05, we cannot conclude that there are significant differences between the fireworks groups.
+
+## Dodgers Attendance by Cap Boxplot
+
+Management is intrested in determining the effect of average attendance by cap promotion.
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ cap, dodgers)
+summary(model_fit)
+```
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Cap"}
+# attendance by month 
+plot(dodgers$cap, dodgers$attend_thousand,
+     xlab = "Cap", 
+     ylab = "Attendance (thousands)", 
+     col = "light blue", las = 1)
+
+plotmeans(attend_thousand ~ cap, data = dodgers,
+          xlab = "Day of week", ylab = "Attendance (thousands)",
+          main="Mean Plot with 95% CI") 
+
+# Compute the analysis of variance
+res.aov <- aov(attend_thousand ~ cap, data = dodgers)
+summary(res.aov)
+```
+
+As the p-value is greater than the significance level 0.05, we cannot conclude that there are significant differences between the cap groups.
+
+```{r, echo=FALSE}
+kable(dodgers %>% select(cap, attend_thousand) %>% group_by(cap) %>% summarise(count = n(), mean=mean(attend_thousand), sd=sd(attend_thousand))) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## Dodgers Attendance by Shirt Boxplot
+
+Management is intrested in determining the effect of average attendance by shirt promotion.
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ shirt, dodgers)
+summary(model_fit)
+```
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Shirt"}
+# attendance by month 
+plot(dodgers$shirt, dodgers$attend_thousand,
+     xlab = "Shirt", 
+     ylab = "Attendance (thousands)", 
+     col = "light blue", las = 1)
+
+plotmeans(attend_thousand ~ shirt, data = dodgers,
+          xlab = "Day of week", ylab = "Attendance (thousands)",
+          main="Mean Plot with 95% CI") 
+
+# Compute the analysis of variance
+res.aov <- aov(attend_thousand ~ shirt, data = dodgers)
+summary(res.aov)
+```
+
+As the p-value is greater than the significance level 0.05, we cannot conclude that there are significant differences between the shirt groups.
+
+```{r, echo=FALSE}
+kable(dodgers %>% select(shirt, attend_thousand) %>% group_by(shirt) %>% summarise(count = n(), mean=mean(attend_thousand), sd=sd(attend_thousand))) %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+## Dodgers Weather, Fireworks, and Attendance lattice scatter plot
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ temp + skies + day_night, dodgers)
+summary(model_fit)
+```
+
+### Plot
+
+This plot shows the relationship between temperature and attendance, controlling for time of day (day_night) and sky conditions (skies).
+
+```{r fig.cap="\\label{fig:figs}Dodgers Weather, Fireworks, and Attendance"}
+group_labels <- c("No Fireworks", "Fireworks")
+#pch = 21, filled circle blue
+#pch = 24, filled triangle point-up blue
+group_symbols <- c(21, 24)
+group_colors <- c("black", "black") #outline color
+group_fill_colors <- c("black", "red") #fill color
+xyplot(attend_thousand ~ temp | skies + day_night, 
+       data = dodgers, groups = fireworks, 
+       pch = group_symbols, 
+       col = group_colors, 
+       fill = group_fill_colors,
+       layout = c(2, 2), 
+       type = c("p","g"),
+       strip = strip.custom(strip.levels=TRUE, strip.names=FALSE, style=1),
+       key = list(space = "top", 
+                  text = list(rev(group_labels), col = rev(group_colors)),
+                  points = list(pch = rev(group_symbols), col = rev(group_colors),
+                                fill = rev(group_fill_colors))),
+       xlab = "Temperature (Degrees Fahrenheit)", 
+       ylab = "Attendance (thousands)")  
+```
+
+On clear day the relationship between temperature and attandance (thousands) is negative, this is opposite of what I expected.
+
+## Dodgers Attendance by Visiting Team scatter plot
+
+### Model
+
+```{r}
+model_fit <- lm(attend_thousand ~ opponent + day_night, dodgers)
+summary(model_fit)
+plot_model(model_fit, type = "diag")
+```
+
+### Plot
+
+This strip plot shows the relationship between attendance (thousands) by opponent.  As expected opponents from large metropolitan areas have higher attendance on average.
+
+```{r fig.cap="\\label{fig:figs}Dodgers Attendance by Visiting Team"}
+group_labels <- c("Day", "Night")  #day_night label
+group_symbols <- c(1, 19)
+#pch = 1,circle
+#pch = 19, solid circle
+bwplot(opponent ~ attend_thousand, data = dodgers, groups = day_night, 
+       panel = function(x, y, groups, subscripts, ...) 
+       {panel.grid(h = (length(levels(dodgers$opponent)) - 1), v = -1)
+         panel.stripplot(x, y, groups = groups, subscripts = subscripts, 
+                         pch = group_symbols, col = "darkblue")
+       },
+       key = list(space = "top", 
+                  text = list(group_labels,col = "black"),
+                  points = list(pch = group_symbols, 
+                                col = "darkblue")),
+       xlab = "Attendance (thousands)"
+)
+```
+
+## Regression Model Performance: Bobbleheads and Attendance
+
+Do bobblehead promotions increase attendance, controlling for the date of the game (month and day of the week)?
+
+This model predict higher attendance at games where bobbleheads are distributed.
+
+```{r, echo=FALSE, include=FALSE}
+dodgers$day_of_week <- with(data=dodgers,
+  ifelse ((day_of_week == "Monday"), 1,
+  ifelse ((day_of_week == "Tuesday"), 2,
+  ifelse ((day_of_week == "Wednesday"), 3,
+  ifelse ((day_of_week == "Thursday"), 4,
+  ifelse ((day_of_week == "Friday"), 5,
+  ifelse ((day_of_week == "Saturday"), 6, 7)))))))
+
+dodgers$month <- with(data=dodgers,
+  ifelse ((month == "APR"), 4,
+  ifelse ((month == "MAY"), 5,
+  ifelse ((month == "JUN"), 6,
+  ifelse ((month == "JUL"), 7,
+  ifelse ((month == "AUG"), 8,
+  ifelse ((month == "SEP"), 9, 10)))))))
+```
+
+```{r}
+set.seed(1)
+# Create random sample indexes
+train_index <- sample(1:nrow(dodgers), 0.8 * nrow(dodgers))
+test_index <- setdiff(1:nrow(dodgers), train_index)
+
+# Build training and test data set
+dodgers_train <- dodgers[train_index, ]
+dodgers_test <- dodgers[test_index, ]
+dodgers_train$training_test <- 1
+dodgers_test$training_test <- 2
+
+# fit the model to the training data 
+train_model_fit <- lm(attend_thousand ~ month + day_of_week + bobblehead, data = dodgers_train)
+
+# set predictions for training data
+dodgers_train$attend_thousand_predicted <- predict(train_model_fit) 
+
+# set predictions for test data
+dodgers_test$attend_thousand_predicted <- predict(train_model_fit, 
+                                                  newdata = dodgers_test %>% select(-attend_thousand))
+
+dodgers_new <- rbind(dodgers_train, dodgers_test)
+dodgers_new$training_test <- factor(dodgers_new$training_test, 
+                                    levels=c(1, 2), labels=c("TRAIN", "TEST"))
+```
+
+### Model
+
+```{r}
+summary(train_model_fit)
+```
+
+From the output above, the average attendance for `bobblehead`r levels(dodgers_train$bobblehead)[1]`` is estimated to be `r round(summary(train_model_fit)$coefficients["(Intercept)", 1], 2)` (thousands), whereas `bobbleheadYes` is estimated a total of `r round(summary(train_model_fit)$coefficients["(Intercept)", 1] + summary(train_model_fit)$coefficients["bobbleheadYES", 1], 2)` (thousands) when all other variables are held constant. The p-value for variable `bobbleheadYES` `r ifelse(summary(train_model_fit)$coefficients["bobbleheadYES", 4] < 0.05, "is", "is not")` significant, suggesting that there is a statistical evidence of a difference in average attendance.  This is statistically significant at the 0.05 percent level.
+
+The variation in bobblehead promotion explain `r round(summary(train_model_fit)$r.square*100, 2)`% of the variation in the attendance.
+
+### Model diagnostics
+
+```{r}
+plot_model(train_model_fit, type = "diag")
+marginalModelPlots(train_model_fit, ask=FALSE)
+outlierTest(train_model_fit)
+```
+
+Check assumption 2, Are the mean of the residuals approaching 0?
+```{r}
+mean(train_model_fit$residuals)
+```
+
+Check Assumption 3, homoscedasticity of the residuals or equal variance
+
+Top and bottom left show how the residuals vary as the fitted values increase.  Pattern is indicated by the red line, which should be approximately flat if the disturbances are homoscedastic.
+
+Check Assumption 6
+
+```{r}
+var(dodgers_train$attend_thousand)
+```
+
+Larger than 0, so assumption satisfied
+
+Ideally, the residual plot will show no fitted pattern. The blue line is not approximately horizontal at zero. The presence of a pattern is an indicator that the nodel is not linear.
+
+The Normal QQ plot helps us to assess whether the residuals are roughly normally distributed.  The residuals deviate from the diagonal line, the normality assumption is not meet.
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Regression Model Performance: Bobbleheads and Attendance"}
+group_labels <- c("No Bobbleheads", "Bobbleheads")
+group_symbols <- c(21, 24)
+#using group.colors and group.fill from figure 2.3
+xyplot(attend_thousand_predicted ~ attend_thousand | training_test, 
+       data = dodgers_new, groups = bobblehead,
+       pch = group_symbols, 
+       col = group_colors, 
+       fill = group_fill_colors, 
+       layout = c(2, 1), 
+       xlim = c(20, 65), 
+       ylim = c(20, 65), 
+       aspect=1, 
+       type = c("p","g"),
+       panel=function(x,y, ...)
+       {panel.xyplot(x,y,...)
+         panel.segments(25, 25, 60, 60, col="black", cex=2)
+       },
+       strip=function(...) strip.default(..., style=1),
+       key = list(space = "top", 
+                  text = list(rev(group_labels), col = rev(group_colors)),
+                  points = list(pch = rev(group_symbols), 
+                                col = rev(group_colors),
+                                fill = rev(group_fill_colors))),
+       xlab = "Actual Attendance (thousands)", 
+       ylab = "Predicted Attendance (thousands)")    
+```
+
+## Regression Model Performance: Cap and Attendance
+
+Do cap promotions increase attendance, controlling for the date of the game (month and day of the week)?
+
+This model predict lower attendance at games where cap are distributed.
+
+```{r}
+# fit the model to the training data 
+train_model_fit <- lm(attend_thousand ~ month + day_of_week + cap, data = dodgers_train)
+
+# set predictions for training data
+dodgers_train$attend_thousand_predicted <- predict(train_model_fit) 
+
+# set predictions for test data
+dodgers_test$attend_thousand_predicted <- predict(train_model_fit, 
+                                                  newdata = dodgers_test %>% select(-attend_thousand))
+
+dodgers_new <- rbind(dodgers_train, dodgers_test)
+dodgers_new$training_test <- factor(dodgers_new$training_test, 
+                                    levels=c(1, 2), labels=c("TRAIN", "TEST"))
+```
+
+### Model
+
+```{r}
+summary(train_model_fit)
+```
+
+From the output above, the average attendance for `cap`r levels(dodgers_train$cap)[1]`` is estimated to be `r round(summary(train_model_fit)$coefficients["(Intercept)", 1], 2)` (thousands), whereas `capYes` is estimated a total of `r round(summary(train_model_fit)$coefficients["(Intercept)", 1] + summary(train_model_fit)$coefficients["capYES", 1], 2)` (thousands) when all other variables are held constant. The p-value for variable `capYES` `r ifelse(summary(train_model_fit)$coefficients["capYES", 4] < 0.05, "is", "is not")` significant, suggesting that there is a statistical evidence of a difference in average attendance.  This is statistically significant at the 0.05 percent level.
+
+The variation in cap promotion explain `r round(summary(train_model_fit)$r.square*100, 2)`% of the variation in the attendance.
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Regression Model Performance: Cap and Attendance"}
+group_labels <- c("No Cap", "Cap")
+group_symbols <- c(21, 24)
+#using group.colors and group.fill from figure 2.3
+xyplot(attend_thousand_predicted ~ attend_thousand | training_test, 
+       data = dodgers_new, groups = cap,
+       pch = group_symbols, 
+       col = group_colors, 
+       fill = group_fill_colors, 
+       layout = c(2, 1), 
+       xlim = c(20, 65), 
+       ylim = c(20, 65), 
+       aspect=1, 
+       type = c("p","g"),
+       panel=function(x,y, ...)
+       {panel.xyplot(x,y,...)
+         panel.segments(25, 25, 60, 60, col="black", cex=2)
+       },
+       strip=function(...) strip.default(..., style=1),
+       key = list(space = "top", 
+                  text = list(rev(group_labels), col = rev(group_colors)),
+                  points = list(pch = rev(group_symbols), 
+                                col = rev(group_colors),
+                                fill = rev(group_fill_colors))),
+       xlab = "Actual Attendance (thousands)", 
+       ylab = "Predicted Attendance (thousands)")    
+```
+
+## Regression Model Performance: Shirt and Attendance
+
+Do shirt promotions increase attendance, controlling for the date of the game (month and day of the week)?
+
+This model predict lower attendance at games where cap are distributed.
+
+```{r}
+# fit the model to the training data 
+train_model_fit <- lm(attend_thousand ~ month + day_of_week + shirt, data = dodgers_train)
+
+# set predictions for training data
+dodgers_train$attend_thousand_predicted <- predict(train_model_fit) 
+
+# set predictions for test data
+dodgers_test$attend_thousand_predicted <- predict(train_model_fit, 
+                                                  newdata = dodgers_test %>% select(-attend_thousand))
+
+dodgers_new <- rbind(dodgers_train, dodgers_test)
+dodgers_new$training_test <- factor(dodgers_new$training_test, 
+                                    levels=c(1, 2), labels=c("TRAIN", "TEST"))
+```
+
+### Model
+
+```{r}
+summary(train_model_fit)
+```
+
+### Plot
+
+```{r fig.cap="\\label{fig:figs}Regression Model Performance: Shirt and Attendance"}
+group_labels <- c("No Shirt", "Shirt")
+group_symbols <- c(21, 24)
+#using group.colors and group.fill from figure 2.3
+xyplot(attend_thousand_predicted ~ attend_thousand | training_test, 
+       data = dodgers_new, groups = shirt,
+       pch = group_symbols, 
+       col = group_colors, 
+       fill = group_fill_colors, 
+       layout = c(2, 1), 
+       xlim = c(20, 65), 
+       ylim = c(20, 65), 
+       aspect=1, 
+       type = c("p","g"),
+       panel=function(x,y, ...)
+       {panel.xyplot(x,y,...)
+         panel.segments(25, 25, 60, 60, col="black", cex=2)
+       },
+       strip=function(...) strip.default(..., style=1),
+       key = list(space = "top", 
+                  text = list(rev(group_labels), col = rev(group_colors)),
+                  points = list(pch = rev(group_symbols), 
+                                col = rev(group_colors),
+                                fill = rev(group_fill_colors))),
+       xlab = "Actual Attendance (thousands)", 
+       ylab = "Predicted Attendance (thousands)")    
+```
+
+## Regression Model Performance: Shirt and Attendance
+
+Do shirt promotions increase attendance, controlling for the date of the game (month and day of the week)?
+
+This model predict lower attendance at games where cap are distributed.
+
+```{r}
+# fit the model to the training data 
+train_model_fit <- lm(attend_thousand ~ month + day_of_week + fireworks, data = dodgers_train)
+
+# set predictions for training data
+dodgers_train$attend_thousand_predicted <- predict(train_model_fit) 
+
+# set predictions for test data
+dodgers_test$attend_thousand_predicted <- predict(train_model_fit, 
+                                                  newdata = dodgers_test %>% select(-attend_thousand))
+
+dodgers_new <- rbind(dodgers_train, dodgers_test)
+dodgers_new$training_test <- factor(dodgers_new$training_test, 
+                                    levels=c(1, 2), labels=c("TRAIN", "TEST"))
+```
+
+### Model
+
+```{r}
+summary(train_model_fit)
+```

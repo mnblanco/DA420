@@ -1,0 +1,303 @@
+---
+title: "Project 3: Preference and Choice / Market Basket Analysis"
+author: "Marjorie Blanco"
+subtitle: DA 420
+output:
+  pdf_document:
+    fig_caption: yes
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(readr)
+library(support.CEs)  # package for survey construction 
+library(arules)       # association rules
+library(arulesViz)     # data visualization of association rules
+library(RColorBrewer)  # color palettes for plots
+library(knitr)
+source("Chapter_3/R_utility_program_1.R")
+library(kableExtra)
+library(kableExtra)
+print.digits <- 2    # set number of digits on print and spine chart
+```
+
+
+```{r}
+plotRule <- function(rules, product, filename) {
+  # select rules with product in consequent (right-hand-side) item subsets
+  product.rules <- subset(rules, subset = rhs %pin% product)
+  
+  # sort by lift and identify the top 10 rules
+  top.product.rules <- head(sort(product.rules, decreasing = TRUE, by = "lift"), 10)
+  inspect(top.product.rules) 
+  
+#  pdf(file=filename, width = 11, height = 8.5)
+  plot(top.product.rules, method="graph", 
+       shading = "lift",
+       main = cat("Rules for", product, sep = " "))
+#  dev.off() 
+  return (top.product.rules)
+}
+```
+
+
+## Part 1
+
+### Read mobile data
+
+```{r, echo=FALSE}
+conjoint.data.frame <- read_csv("data/mobile.csv")
+kable(head(conjoint.data.frame))  %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+# user-defined function for plotting descriptive attribute names 
+effect.name.map <- function(effect.name) { 
+  if(effect.name=="brand") return("Mobile Service Provider:")
+  if(effect.name=="startup") return("Start-up Cost:")
+  if(effect.name=="monthly") return("Monthly Cost:")
+  if(effect.name=="service") return("Offers 4G Service:")
+  if(effect.name=="retail") return("Has Nearby Retail Store:")
+  if(effect.name=="apple") return("Sells Apple Products:")
+  if(effect.name=="samsung") return("Sells Samsung Products:")
+  if(effect.name=="google") return("Sells Google/Nexus Products:")
+} 
+
+# set up sum contrasts for effects coding as needed for conjoint analysis
+options(contrasts=c("contr.sum", "contr.poly"))
+
+# main effects model specification
+main.effects.model <- {ranking ~ brand + startup + monthly + service + 
+    retail + apple + samsung + google}
+
+# fit linear regression model using main effects only (no interaction terms)
+main.effects.model.fit <- lm(main.effects.model, data=conjoint.data.frame)
+print(summary(main.effects.model.fit)) 
+
+# save key list elements of the fitted model as needed for conjoint measures
+conjoint.results <- 
+  main.effects.model.fit[c("contrasts", "xlevels", "coefficients")]
+
+conjoint.results$attributes <- names(conjoint.results$contrasts)
+
+# compute and store part-worths in the conjoint.results list structure
+part.worths <- conjoint.results$xlevels  # list of same structure as xlevels
+end.index.for.coefficient <- 1  # intitialize skipping the intercept
+part.worth.vector <- NULL # used for accumulation of part worths
+for(index.for.attribute in seq(along=conjoint.results$contrasts)) {
+  nlevels <- length(unlist(conjoint.results$xlevels[index.for.attribute]))
+  begin.index.for.coefficient <- end.index.for.coefficient + 1
+  end.index.for.coefficient <- begin.index.for.coefficient + nlevels -2
+  last.part.worth <- -sum(conjoint.results$coefficients[
+    begin.index.for.coefficient:end.index.for.coefficient])
+  part.worths[index.for.attribute] <- 
+    list(as.numeric(c(conjoint.results$coefficients[
+      begin.index.for.coefficient:end.index.for.coefficient],
+      last.part.worth)))
+  part.worth.vector <- 
+    c(part.worth.vector,unlist(part.worths[index.for.attribute]))    
+} 
+conjoint.results$part.worths <- part.worths
+
+# compute standardized part-worths
+standardize <- function(x) {(x - mean(x)) / sd(x)}
+conjoint.results$standardized.part.worths <- 
+  lapply(conjoint.results$part.worths,standardize)
+
+# compute and store part-worth ranges for each attribute 
+part.worth.ranges <- conjoint.results$contrasts
+for(index.for.attribute in seq(along=conjoint.results$contrasts)) 
+  part.worth.ranges[index.for.attribute] <- 
+  dist(range(conjoint.results$part.worths[index.for.attribute]))
+conjoint.results$part.worth.ranges <- part.worth.ranges
+
+sum.part.worth.ranges <- sum(as.numeric(conjoint.results$part.worth.ranges))
+
+# compute and store importance values for each attribute 
+attribute.importance <- conjoint.results$contrasts
+for(index.for.attribute in seq(along=conjoint.results$contrasts)) 
+  attribute.importance[index.for.attribute] <- 
+  (dist(range(conjoint.results$part.worths[index.for.attribute]))/
+     sum.part.worth.ranges) * 100
+conjoint.results$attribute.importance <- attribute.importance
+
+# data frame for ordering attribute names
+attribute.name <- names(conjoint.results$contrasts)
+attribute.importance <- as.numeric(attribute.importance)
+temp.frame <- data.frame(attribute.name,attribute.importance)
+conjoint.results$ordered.attributes <- 
+  as.character(temp.frame[sort.list(
+    temp.frame$attribute.importance,decreasing = TRUE),"attribute.name"])
+
+# respondent internal consistency added to list structure
+conjoint.results$internal.consistency <- summary(main.effects.model.fit)$r.squared 
+
+# user-defined function for printing conjoint measures
+if (print.digits == 2) 
+  pretty.print <- function(x) {sprintf("%1.2f",round(x,digits = 2))} 
+if (print.digits == 3) 
+  pretty.print <- function(x) {sprintf("%1.3f",round(x,digits = 3))} 
+
+# report conjoint measures to console 
+# use pretty.print to provide nicely formated output
+for(k in seq(along=conjoint.results$ordered.attributes)) {
+  cat("\n","\n")
+  cat(conjoint.results$ordered.attributes[k],"Levels: ",
+      unlist(conjoint.results$xlevels[conjoint.results$ordered.attributes[k]]))
+  
+  cat("\n"," Part-Worths:  ")
+  cat(pretty.print(unlist(conjoint.results$part.worths
+                          [conjoint.results$ordered.attributes[k]])))
+  
+  cat("\n"," Standardized Part-Worths:  ")
+  cat(pretty.print(unlist(conjoint.results$standardized.part.worths
+                          [conjoint.results$ordered.attributes[k]])))  
+  
+  cat("\n"," Attribute Importance:  ")
+  cat(pretty.print(unlist(conjoint.results$attribute.importance
+                          [conjoint.results$ordered.attributes[k]])))
+}
+```
+
+```{r fig.width=8.5, fig.height=5, echo=TRUE}
+# plotting of spine chart begins here
+spine.chart(conjoint.results)
+```
+
+```{r}
+pdf(file="mobile_spine_plot.pdf", width = 11, height = 8.5)
+spine.chart(conjoint.results)
+dev.off()
+```
+
+
+## Part 2
+
+```{r, echo=FALSE}
+# grocery transactions object from arules package
+data(Groceries)  
+```
+
+The data set consists of `r nrow(Groceries)` market baskets across `r ncol(Groceries)` generically-labeled grocery items. 
+
+
+```{r}
+groceries <- aggregate(Groceries, itemInfo(Groceries)[["level2"]])  
+
+# select association rules using thresholds for support and confidence 
+rules <- apriori(groceries, 
+                 parameter = list(support = 0.025, confidence = 0.05))
+print(summary(rules))  # yields 344 rules
+```
+
+### Vegetables
+
+```{r echo=TRUE}
+plotRule(rules, "vegetables", "market_basket_vegetables_rules.pdf")
+```
+
+#### Top 3 Rules
+
+- Customers who buy beef and dairy produce are 2.2 times as likely to buy vegetables as customers from the entire data set.
+
+- Customers who buy poultry are 2.1 times as likely to buy vegetables as customers from the entire data set.
+
+- Customers who buy dairy produce, fruit, and sausage  are 2.1 times as likely to buy vegetables as customers from the entire data set.
+
+To increase profits, I recomend to promote a dinner kit containing meat (beef, poultry or sausage) with vegetable mix.
+
+### Fruit
+
+```{r}
+plotRule(rules, "fruit", "market_basket_fruit_rules.pdf")
+```
+
+
+#### Top 3 Rules
+
+- Customers who buy dairy produce, sausage, and vegetables are 2.0 times as likely to buy fruit as customers from the entire data set.
+
+- Customers who buy dairy produce, non-alc. drinks, and vegetables are 2.0 times as likely to buy fruit as customers from the entire data set.
+
+- Customers who buy bread and backed goods, dairy produce, and vegetables are 1.9 times as likely to buy fruit as customers from the entire data set.
+
+To increase profits, I recomend to promote a fruit, cheese and vegetables platter.
+
+
+### Meat: Pork
+
+```{r echo=TRUE}
+plotRule(rules, "pork", "market_basket_pork_rules.pdf")
+```
+
+- Customers who buy vegetables are 1.9 times as likely to buy pork as customers from the entire data set.
+
+To increase profits, I recomend to promote a dinner kit containing meat (pork) with vegetable mix.
+
+### Meat: Beef
+
+```{r echo=TRUE}
+plotRule(rules, "beef", "market_basket_beef_rules.pdf")
+```
+
+#### Top 3 Rules
+
+- Customers who buy dairy produce and vegetables are 2.1 times as likely to buy beef as customers from the entire data set.
+
+- Customers who buy vegetables are 2.0 times as likely to buy beef as customers from the entire data set.
+
+- Customers who buy bread and backed goods and dairy produce are 1.7 times as likely to buy beef as customers from the entire data set.
+
+
+To increase profits, I recomend to promote a dinner kit containing meat (beef) with vegetable mix.
+
+```{r echo=TRUE}
+plotRule(rules, "poultry", "market_basket_poultry_rules.pdf")
+```
+
+- Customers who buy vegetables are 2.1 times as likely to buy poultry as customers from the entire data set.
+
+
+To increase profits, I recomend to promote a dinner kit containing meat (poultry) with vegetable mix.
+
+### Dairy producer
+
+```{r echo=TRUE}
+plotRule(rules, "cheese", "market_basket_cheese_rules.pdf")
+```
+
+#### Top 3 Rules
+
+- Customers who buy dairy produce and sausage are 2.28 times as likely to buy cheese as customers from the entire data set.
+
+- Customers who buy bread and backed goods, and sausage are 2.2 times as likely to buy cheese as customers from the entire data set.
+
+- Customers who buy bread and backed goods, and fruit are 2.17 times as likely to buy cheese as customers from the entire data set.
+
+```{r echo=TRUE}
+plotRule(rules, "dairy produce", "market_basket_dairy_produce_rules.pdf")
+```
+
+#### Top 3 Rules
+
+- Customers who buy bread and backed goods, fruit, and sausage are 1.8 times as likely to buy dairy produce as customers from the entire data set.
+
+- Customers who buy bread and backed goods, fruit, and vegetable are 1.79 times as likely to buy dairy produce as customers from the entire data set.
+
+- Customers who buy fruit, sausage, and vegetables are 1.78 times as likely to buy dairy produce as customers from the entire data set.
+
+
+### Beer
+
+```{r echo=TRUE}
+plotRule(rules, "beer", "market_basket_beer_rules.pdf")
+```
+In general, association rules with lift values close to 1 will are not interesting nor useful than rules with lift values higher than 1. 
+
+### Recomendation
+
+

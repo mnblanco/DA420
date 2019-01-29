@@ -1,0 +1,276 @@
+---
+title: "Project 4: conomic Data Analysis"
+author: "Marjorie Blanco"
+subtitle: DA 420
+output:
+  pdf_document:
+    fig_caption: yes
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library('forecast')
+library('tseries')
+library(kableExtra)
+```
+
+
+```{r}
+# Analysis of Economic Time Series (R)
+
+# economic time series gathered with this program are continually
+# updated... so predictive models, forecasts, and data visualizations
+# produced by this program may differ from those shown in the book
+
+library(quantmod) # use for gathering and charting economic data
+library(lubridate) # date functions
+library(latticeExtra) # package used for horizon plot
+library(forecast) # functions for time series forecasting 
+library(lmtest) # for Granger test of causality
+```
+
+## Part 1: 
+
+Use R to develop a Multiple Time Series Plot, as seen in Figure 5.1. Make sure you include the command lines and the output/results. Interpret the graphin details. 
+
+Hint:Look at the Exhibit 5.1 in page 62-63.
+
+### Data
+
+The source of this data is the U.S. Bureau of Labor Statistics.  The rate is released monthly as a percent.  The data is seasonally adjusted.
+
+Frequency:  Monthly
+
+```{r echo=TRUE}
+# Economic Data from Federal Reserve Bank of St. Louis (FRED system)
+# Civilian Labor Force Participation Rate: Women  (monthly, percentage)
+getSymbols("LNS11300002", src="FRED", return.class = "xts")
+# Civilian Labor Force Participation Rate: Men  (monthly, percentage)
+getSymbols("LNS11300001", src="FRED", return.class = "xts")
+# Civilian Labor Force Participation Rate: White  (monthly, percentage)
+getSymbols("LNS11300003", src="FRED", return.class = "xts")
+# Civilian Labor Force Participation Rate: Black  (monthly, percentage)
+getSymbols("LNS11300006", src="FRED", return.class = "xts")
+# Civilian Labor Force Participation Rate: Hispanic or Latino  (monthly, percentage)
+getSymbols("LNS11300009", src="FRED", return.class = "xts")
+
+
+PR <- LNS11300002 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+chartSeries(PR, theme="white", name="Participation Rate: Women")
+PRWomen.data.frame <- as.data.frame(PR)
+PRWomen.data.frame$date <- ymd(rownames(PRWomen.data.frame))
+
+PRWomen.time.series <- ts(PRWomen.data.frame$PR, 
+  start = c(year(min(PRWomen.data.frame$date)),month(min(PRWomen.data.frame$date))),
+  end = c(year(max(PRWomen.data.frame$date)),month(max(PRWomen.data.frame$date))),
+  frequency=12)
+
+PR <- LNS11300001 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+chartSeries(PR, theme="white", name="Participation Rate: Men")
+PRMen.data.frame <- as.data.frame(PR)
+PRMen.data.frame$date <- ymd(rownames(PRMen.data.frame))
+
+
+PRMen.time.series <- ts(PRMen.data.frame$PR, 
+  start = c(year(min(PRMen.data.frame$date)),month(min(PRMen.data.frame$date))),
+  end = c(year(max(PRMen.data.frame$date)),month(max(PRMen.data.frame$date))),
+  frequency=12)
+
+PR <- LNS11300003 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+chartSeries(PR, theme="white", name="Participation Rate: White")
+PRWhite.data.frame <- as.data.frame(PR)
+PRWhite.data.frame$date <- ymd(rownames(PRWhite.data.frame))
+
+
+PRWhite.time.series <- ts(PRWhite.data.frame$PR, 
+  start = c(year(min(PRWhite.data.frame$date)),month(min(PRWhite.data.frame$date))),
+  end = c(year(max(PRWhite.data.frame$date)),month(max(PRWhite.data.frame$date))),
+  frequency=12)
+
+PR <- LNS11300006 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+chartSeries(PR, theme="white", name="Participation Rate: Black")
+PRBlack.data.frame <- as.data.frame(PR)
+PRBlack.data.frame$date <- ymd(rownames(PRBlack.data.frame))
+
+PRBlack.time.series <- ts(PRBlack.data.frame$PR, 
+  start = c(year(min(PRBlack.data.frame$date)),month(min(PRBlack.data.frame$date))),
+  end = c(year(max(PRBlack.data.frame$date)),month(max(PRBlack.data.frame$date))),
+  frequency=12)
+
+PR <- LNS11300009 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+chartSeries(PR, theme="white", name="Participation Rate: Latino")
+PRLatino.data.frame <- as.data.frame(PR)
+PRLatino.data.frame$date <- ymd(rownames(PRLatino.data.frame))
+
+PRLatino.time.series <- ts(PRLatino.data.frame$PR, 
+  start = c(year(min(PRLatino.data.frame$date)),month(min(PRLatino.data.frame$date))),
+  end = c(year(max(PRLatino.data.frame$date)),month(max(PRLatino.data.frame$date))),
+  frequency=12)
+```
+
+### Multiple time series
+
+```{r}
+# define multiple time series object
+economic.mts <- cbind(PRWhite.time.series, PRBlack.time.series,
+  PRLatino.time.series, PRMen.time.series, PRWomen.time.series) 
+  dimnames(economic.mts)[[2]] <- c("White","Black","Latino","Men", "Women") # keep simple names 
+modeling.mts <- na.omit(economic.mts) # keep overlapping time intervals only
+
+# plot multiple time series 
+plot(modeling.mts,main="")
+```
+
+The civilian labor force participation rate for Women, White, Black and Latino has been steadily increasing while the rate for Men has been decreasing. The rates for all groups have been decreasing since the last recession.  Data for other races are not available.
+
+
+```{r}
+PR <- LNS11300002 # convert to participation rate
+dimnames(PR)[2] <- "PR"
+PR.data.frame <- as.data.frame(PR)
+PR.data.frame$date <- ymd(rownames(PR.data.frame))
+
+recessions.df = read.table(textConnection(
+"Peak, Trough
+1857-06-01, 1858-12-01
+1860-10-01, 1861-06-01
+1865-04-01, 1867-12-01
+1869-06-01, 1870-12-01
+1873-10-01, 1879-03-01
+1882-03-01, 1885-05-01
+1887-03-01, 1888-04-01
+1890-07-01, 1891-05-01
+1893-01-01, 1894-06-01
+1895-12-01, 1897-06-01
+1899-06-01, 1900-12-01
+1902-09-01, 1904-08-01
+1907-05-01, 1908-06-01
+1910-01-01, 1912-01-01
+1913-01-01, 1914-12-01
+1918-08-01, 1919-03-01
+1920-01-01, 1921-07-01
+1923-05-01, 1924-07-01
+1926-10-01, 1927-11-01
+1929-08-01, 1933-03-01
+1937-05-01, 1938-06-01
+1945-02-01, 1945-10-01
+1948-11-01, 1949-10-01
+1953-07-01, 1954-05-01
+1957-08-01, 1958-04-01
+1960-04-01, 1961-02-01
+1969-12-01, 1970-11-01
+1973-11-01, 1975-03-01
+1980-01-01, 1980-07-01
+1981-07-01, 1982-11-01
+1990-07-01, 1991-03-01
+2001-03-01, 2001-11-01
+2007-12-01, 2009-06-01"), sep=',',
+colClasses=c('Date', 'Date'), header=TRUE)
+
+recessions.trim <- subset(recessions.df, Peak >= min(PR.data.frame$date) )
+
+recessions.2007 <- PR.data.frame %>% filter(between(date, as.Date("2007-12-01"), as.Date("2009-06-01")))
+after.2010 <- PR.data.frame %>% filter(between(date, as.Date("2009-06-01"), as.Date("2018-12-01")))
+
+min_rate1 <- min(recessions.2007$PR)
+max_rate1 <- max(recessions.2007$PR)
+
+min_rate2 <- min(after.2010$PR)
+max_rate2 <- max(after.2010$PR)
+min_date <- after.2010 %>% filter(PR == min_rate2)
+```
+
+```{r echo=TRUE}
+ggplot(PR.data.frame) + 
+  geom_line(aes(x=date, y=PR)) +
+  theme_bw() +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf),
+            fill='pink', alpha=0.2) +
+  labs(title = "Civilian Labor Force Participation Rate: Women ", 
+       caption = "Source: U.S. Bureau of Labor Statistics\nShaded areas indicate U.S. recessions", 
+       x = "", y = "Participation Rate") 
+
+
+PR.time.series <- ts(PR.data.frame$PR, 
+  start = c(year(min(PR.data.frame$date)),month(min(PR.data.frame$date))),
+  end = c(year(max(PR.data.frame$date)),month(max(PR.data.frame$date))),
+  frequency=12)
+```
+
+### Data decomposition
+
+```{r}
+decomp = stl(PR.time.series, s.window="periodic")
+plot(decomp)
+```
+
+### Check for Stationarity
+
+```{r}
+adf.test(PR.time.series, alternative = "stationary")
+```
+
+The data is non-stationary; the labor participation rates changes through time. The ADF test does not reject the null hypothesis of non-stationarity, confirming the visual inspection.
+
+### Autocorrelations and Choosing Model Order
+
+```{r}
+Acf(PR.time.series)
+```
+
+ACF plotshows a spike at lags 1 through 24.
+
+
+```{r}
+Pacf(PR.time.series)
+```
+
+PACF plot only shows a spike at lags 1.
+
+
+### Fitting an ARIMA model
+
+```{r echo=TRUE}
+# ARIMA model fit to the partipation rate data
+PR.auto.arima.fit <- auto.arima(PR.time.series, d=NA, D=NA, max.p=5, max.q=5,
+  max.P=2, max.Q=2, max.order=3, start.p=1, start.q=1,
+  start.P=1, start.Q=1, stationary=FALSE, seasonal=FALSE,
+  ic=c("aic"), stepwise=TRUE, trace=FALSE,
+  approximation=FALSE, xreg=NULL,
+  test=c("kpss","adf","pp"), #seasonal.test=c("ocsb","ch"),
+  allowdrift=FALSE, lambda=NULL, parallel=FALSE, num.cores=NULL)
+print(summary(PR.auto.arima.fit))
+# national partipation rate two-year forecast (horizon h = 24 months) 
+PR.forecast <- forecast(PR.auto.arima.fit, h=24, level=c(95), 
+  fan=FALSE, xreg=NULL, bootstrap=FALSE)
+```
+
+AR(1) coefficient p = -1.31 tells us that the next value in the series is taken as a dampened previous value by a factor of -1.32 and depends on previous error lag.
+
+###  Forecast
+
+```{r echo=TRUE}
+# plot national partipation rate time series with two-month forecast 
+plot(PR.forecast,main="", ylab="Partipation Rate",
+  xlab = "Time", las = 1, lwd = 1.5)
+```
+
+```{r}
+kable(PR.forecast)  %>%
+  kable_styling(bootstrap_options = "striped")
+```
+
+### Interpretation
+
+The civilian labor force participation rate for Women has been steadily increasing.  The slow decrease/decay in the ACF as the lags increase is due to the upward trend.  During the 2007-2009 recession (FROM 2007-12-01 TO 2009-06-01) the partipation rate was between `r min_rate1` and `r max_rate1`. After the recession the rate has been steadily decreasing. In the last decade the the participation rate was between `r min_rate2` and `r max_rate2` with lowest participation rate on `r month(min_date$date)`-`r year(min_date$date)`.  The 24 month forecast shows the rate to remain steady.

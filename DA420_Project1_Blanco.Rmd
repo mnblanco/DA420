@@ -1,0 +1,148 @@
+---
+title: 'Project 1: Analytics and Data Science'
+author: "Marjorie Blanco"
+subtitle: DA 420
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(knitr)
+```
+
+# Anscombe Quartet
+
+```{r}
+# Read Anscombe data 
+anscombe <- read.csv("data/Anscombe.csv")
+kable(anscombe)
+```
+
+## Descriptive statistics
+
+```{r}
+# calculate the mean and standard deviation
+kable(anscombe %>% select(-Observation) %>%
+    summarise_all(funs( mean(.), sd(.))) %>%
+  gather())
+```
+
+## Linear Model
+
+```{r}
+fit.model <- lm(y1~x1, anscombe)
+summary(fit.model)
+
+anscombe$x1_1 <- anscombe$x1 
+anscombe$y1_1 <- fit.model$fitted.values -  fit.model$residuals
+
+fit.model <- lm(y2~x2, anscombe)
+summary(fit.model)
+
+anscombe$x2_1 <- anscombe$x2 
+anscombe$y2_1 <- fit.model$fitted.values -  fit.model$residuals
+
+fit.model <- lm(y3~x3, anscombe)
+summary(fit.model)
+
+anscombe$x3_1 <- anscombe$x3 
+anscombe$y3_1 <- fit.model$fitted.values -  fit.model$residuals
+
+fit.model <- lm(y4~x4, anscombe)
+summary(fit.model)
+
+anscombe$x4_1 <- anscombe$x4 
+anscombe$y4_1 <- fit.model$fitted.values -  fit.model$residuals
+```
+
+## Original Plots
+
+```{r}
+# 2x2 row with 2 margin
+par(mfrow=c(2,2), mar=c(2, 2, 2, 2))
+plot(anscombe$x1, anscombe$y1, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "") 
+abline(lm(anscombe$y1~anscombe$x1))
+title("Set I")
+
+plot(anscombe$x2, anscombe$y2, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y2~anscombe$x2))
+title("Set II")
+
+plot(anscombe$x3, anscombe$y3, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y3~anscombe$x3))
+title("Set III")
+
+plot(anscombe$x4, anscombe$y4, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y4~anscombe$x4))
+title("Set IV")
+```
+
+# Modified Anscombe Quartet
+
+To modify the original data while keeping the mean and standard deviation unchaged I fliped the dependent variable on the linear regression line.  The expected impact is that the  $\beta0$ (intercept) and $\beta1$ will not change.  The mean and standard deviation for the explantory variables will not change.
+
+```{r}
+kable(anscombe %>% select(-(x1:y4)))
+```
+
+## Descriptive statistics
+
+```{r}
+# calculate the mean and standard deviation
+kable(anscombe %>% select(-(Observation:y4)) %>%
+    summarise_all(funs( mean(.), sd(.))) %>%
+  gather())
+```
+
+## Modified Linear Model
+
+```{r}
+fit.model <- lm(y1_1~x1_1, anscombe)
+summary(fit.model)
+
+fit.model <- lm(y2_1~x2_1, anscombe)
+summary(fit.model)
+
+fit.model <- lm(y3_1~x3_1, anscombe)
+summary(fit.model)
+
+fit.model <- lm(y4_1~x4_1, anscombe)
+summary(fit.model)
+```
+
+## Modified Plots
+
+```{r}
+# 2x2 row with 2 margin
+par(mfrow=c(2,2), mar=c(2, 2, 2, 2))
+plot(anscombe$x1_1, anscombe$y1_1, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "") 
+abline(lm(anscombe$y1_1~anscombe$x1_1))
+title("Set I")
+
+plot(anscombe$x2_1, anscombe$y2_1, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y2_1~anscombe$x2_1))
+title("Set II")
+
+plot(anscombe$x3_1, anscombe$y3_1, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y3_1~anscombe$x3_1))
+title("Set III")
+
+plot(anscombe$x4_1, anscombe$y4_1, xlim=c(2, 20), ylim=c(2, 14), pch = 19, 
+    col = "darkblue", cex = 0.3, las = 1, xlab = "", ylab = "")
+abline(lm(anscombe$y4_1~anscombe$x4_1))
+title("Set IV")
+```
+
+
+
