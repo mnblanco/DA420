@@ -1,5 +1,5 @@
 ---
-title: "Project 4: conomic Data Analysis"
+title: "Project 4: Economic Data Analysis"
 author: "Marjorie Blanco"
 subtitle: DA 420
 output:
@@ -35,11 +35,205 @@ library(forecast) # functions for time series forecasting
 library(lmtest) # for Granger test of causality
 ```
 
+
+```{r}
+recessions.df = read.table(textConnection(
+"Peak, Trough
+1857-06-01, 1858-12-01
+1860-10-01, 1861-06-01
+1865-04-01, 1867-12-01
+1869-06-01, 1870-12-01
+1873-10-01, 1879-03-01
+1882-03-01, 1885-05-01
+1887-03-01, 1888-04-01
+1890-07-01, 1891-05-01
+1893-01-01, 1894-06-01
+1895-12-01, 1897-06-01
+1899-06-01, 1900-12-01
+1902-09-01, 1904-08-01
+1907-05-01, 1908-06-01
+1910-01-01, 1912-01-01
+1913-01-01, 1914-12-01
+1918-08-01, 1919-03-01
+1920-01-01, 1921-07-01
+1923-05-01, 1924-07-01
+1926-10-01, 1927-11-01
+1929-08-01, 1933-03-01
+1937-05-01, 1938-06-01
+1945-02-01, 1945-10-01
+1948-11-01, 1949-10-01
+1953-07-01, 1954-05-01
+1957-08-01, 1958-04-01
+1960-04-01, 1961-02-01
+1969-12-01, 1970-11-01
+1973-11-01, 1975-03-01
+1980-01-01, 1980-07-01
+1981-07-01, 1982-11-01
+1990-07-01, 1991-03-01
+2001-03-01, 2001-11-01
+2007-12-01, 2009-06-01"), sep=',',
+colClasses=c('Date', 'Date'), header=TRUE)
+```
+
 ## Part 1: 
 
 Use R to develop a Multiple Time Series Plot, as seen in Figure 5.1. Make sure you include the command lines and the output/results. Interpret the graphin details. 
 
 Hint:Look at the Exhibit 5.1 in page 62-63.
+
+### Data
+
+```{r echo=TRUE}
+# Economic Data from Federal Reserve Bank of St. Louis (FRED system)
+# National Civilian Unemployment Rate (monthly, percentage)
+getSymbols("UNRATENSA", src="FRED", return.class = "xts")
+# Manufacturers' New Orders: Durable Goods (millions of dollars) 
+getSymbols("DGORDER", src="FRED", return.class = "xts")
+# University of Michigan Index of Consumer Sentiment (1Q 1966 = 100)
+getSymbols("UMCSENT", src="FRED", return.class = "xts")
+# New Homes Sold in the US, not seasonally adjusted (monthly, millions)
+getSymbols("HSN1FNSA",src="FRED",return.class = "xts")
+```
+
+```{r echo=TRUE}
+ER <- 100 - UNRATENSA # convert to employment rate
+dimnames(ER)[2] <- "ER"
+ER.data.frame <- as.data.frame(ER)
+ER.data.frame$date <- ymd(rownames(ER.data.frame))
+
+ER.time.series <- ts(ER.data.frame$ER, 
+  start = c(year(min(ER.data.frame$date)),month(min(ER.data.frame$date))),
+  end = c(year(max(ER.data.frame$date)),month(max(ER.data.frame$date))),
+  frequency=12)
+
+recessions.trim <- subset(recessions.df, Peak >= min(ER.data.frame$date) )
+
+ggplot(ER.data.frame) + 
+  geom_line(aes(x=date, y=ER)) +
+  theme_bw() +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf),
+            fill='gray', alpha=0.2) +
+  labs(title = "National Civilian Employment Rate (monthly, percentage)", 
+       caption = "Source: U.S. Bureau of Labor Statistics\nShaded areas indicate U.S. recessions", 
+       x = "", y = "Employment Rate") 
+
+decomp = stl(ER.time.series, s.window="periodic")
+plot(decomp)
+Acf(ER.time.series)
+Pacf(ER.time.series)
+```
+ACF plot shows a spike at lags 1 through 30. PACF plot shows a spike at lags 1 and 13.  This chart shows that the employement rate are cyclical related to the recessions.  The employement rate shows a upward trend after recession years and downward trend during recession years.  The trend and cyclical nature of employment rate is expected.
+
+
+```{r echo=TRUE}
+DGO <- DGORDER/1000 # convert to billions of dollars
+dimnames(DGO)[2] <- "DGO" # use simple name for index
+DGO.data.frame <- as.data.frame(DGO)
+DGO.data.frame$DGO <- DGO.data.frame$DGO
+DGO.data.frame$date <- ymd(rownames(DGO.data.frame))
+DGO.time.series <- ts(DGO.data.frame$DGO, 
+  start = c(year(min(DGO.data.frame$date)),month(min(DGO.data.frame$date))),
+  end = c(year(max(DGO.data.frame$date)),month(max(DGO.data.frame$date))),
+  frequency=12)
+
+recessions.trim <- subset(recessions.df, Peak >= min(DGO.data.frame$date) )
+
+ggplot(DGO.data.frame) + 
+  geom_line(aes(x=date, y=DGO)) +
+  theme_bw() +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf),
+            fill='gray', alpha=0.2) +
+  labs(title = "Manufacturers' New Orders: Durable Goods (millions of dollars)", 
+       caption = "Source: U.S. Bureau of Labor Statistics\nShaded areas indicate U.S. recessions", 
+       x = "", y = "Durable Goods (millions of dollars)") 
+
+decomp = stl(DGO.time.series, s.window="periodic")
+plot(decomp)
+Acf(DGO.time.series)
+Pacf(DGO.time.series)
+```
+ACF plot shows a spike at lags 1 through 30. PACF plot shows a spike at lags 1 and 2.  This chart shows that the manufacturers' new orders are cyclical related to the recessions.  The durable goods shows a upward trend after recession years and downward trend during recession years.  The trend and cyclical nature is expected.
+
+```{r echo=TRUE}
+ICS <- UMCSENT # use simple name for xts object
+dimnames(ICS)[2] <- "ICS" # use simple name for index
+ICS.data.frame <- as.data.frame(ICS)
+ICS.data.frame$ICS <- ICS.data.frame$ICS
+ICS.data.frame$date <- ymd(rownames(ICS.data.frame))
+ICS.data.frame <-  ICS.data.frame[303:nrow(ICS.data.frame),]
+
+ICS.time.series <- ts(ICS.data.frame$ICS, 
+  start = c(year(min(ICS.data.frame$date)), month(min(ICS.data.frame$date))),
+  end = c(year(max(ICS.data.frame$date)),month(max(ICS.data.frame$date))),
+  frequency=12)
+
+recessions.trim <- subset(recessions.df, Peak >= ymd("1978-01-01") )
+
+ggplot(ICS.data.frame) + 
+  geom_line(aes(x=date, y=ICS)) +
+  theme_bw() +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf),
+            fill='gray', alpha=0.2) +
+  labs(title = "University of Michigan Index of Consumer Sentiment", 
+       caption = "Source: U.S. Bureau of Labor Statistics\nShaded areas indicate U.S. recessions", 
+       x = "", y = "Consumer Sentiment Index") 
+
+decomp = stl(ICS.time.series, s.window="periodic")
+plot(decomp)
+Acf(ICS.time.series)
+Pacf(ICS.time.series)
+```
+
+ACF plot shows a spike at lags 1 through 30. PACF plot shows a spike at lags 1.  This chart shows that consumer sentiment index is related to the recessions.  The durable goods shows a upward trend after recession years and downward trend during recession years.  The trend and cyclical nature is expected.
+
+
+```{r echo=TRUE}
+NHS <- HSN1FNSA
+dimnames(NHS)[2] <- "NHS" # use simple name for index
+NHS.data.frame <- as.data.frame(NHS)
+NHS.data.frame$NHS <- NHS.data.frame$NHS
+NHS.data.frame$date <- ymd(rownames(NHS.data.frame))
+NHS.time.series <- ts(NHS.data.frame$NHS, 
+  start = c(year(min(NHS.data.frame$date)),month(min(NHS.data.frame$date))),
+  end = c(year(max(NHS.data.frame$date)),month(max(NHS.data.frame$date))),
+  frequency=12)
+
+recessions.trim <- subset(recessions.df, Peak >= ymd("1978-01-01") )
+
+ggplot(NHS.data.frame) + 
+  geom_line(aes(x=date, y=NHS)) +
+  theme_bw() +
+  geom_rect(data=recessions.trim, aes(xmin=Peak, xmax=Trough, ymin=-Inf, ymax=+Inf),
+            fill='gray', alpha=0.2) +
+  labs(title = "New Homes Sold in the US, not seasonally adjusted (monthly, millions)", 
+       caption = "Source: U.S. Bureau of Labor Statistics\nShaded areas indicate U.S. recessions", 
+       x = "", y = "New Homes Sold in the US (millions)") 
+
+decomp = stl(NHS.time.series, s.window="periodic")
+plot(decomp)
+Acf(NHS.time.series)
+Pacf(NHS.time.series)
+
+min_rate1 <- min(NHS.time.series)
+max_rate1 <- max(NHS.time.series)
+
+min_date <- NHS.data.frame %>% filter(NHS == min_rate1)
+max_date <- NHS.data.frame %>% filter(NHS == max_rate1)
+```
+
+ACF plot shows a spike at lags 1, 12 and 14. PACF plot shows a spike at lags 1 and 13.  This chart shows that new homes sold in the US exhibit a seasonal patterns. New homes sold were steadly increasing until  `r max_date` just before the housing market crash.  The lowest home sold in the US was in `r min_date`.
+
+```{r echo=TRUE}
+# define multiple time series object
+economic.mts <- cbind(ER.time.series, DGO.time.series, ICS.time.series,
+  NHS.time.series) 
+  dimnames(economic.mts)[[2]] <- c("ER","DGO","ICS","NHS") # keep simple names 
+modeling.mts <- na.omit(economic.mts) # keep overlapping time intervals only
+
+# plot multiple time series 
+plot(modeling.mts,main="")
+```
+
 
 ### Data
 
@@ -229,8 +423,7 @@ The data is non-stationary; the labor participation rates changes through time. 
 Acf(PR.time.series)
 ```
 
-ACF plotshows a spike at lags 1 through 24.
-
+ACF plotshows a spike at lags 1 through 30.
 
 ```{r}
 Pacf(PR.time.series)

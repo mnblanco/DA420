@@ -1,0 +1,17 @@
+brand,startup,monthly,service,retail,apple,samsung,google,ranking
+AT&T,$400 ,$300 ,4G No,Retail Yes,Apple Yes,Samsung No,Nexus Yes,4
+Verizon,$100 ,$200 ,4G Yes,Retail No,Apple Yes,Samsung No,Nexus Yes,8
+AT&T,$200 ,$400 ,4G Yes,Retail No,Apple Yes,Samsung Yes,Nexus No,3
+T-mobile,$200 ,$200 ,4G No,Retail Yes,Apple Yes,Samsung No,Nexus No,1
+Verizon,$300 ,$100 ,4G No,Retail Yes,Apple Yes,Samsung Yes,Nexus No,2
+T-mobile,$400 ,$100 ,4G Yes,Retail No,Apple Yes,Samsung Yes,Nexus Yes,9
+US Cellular,$300 ,$300 ,4G Yes,Retail No,Apple Yes,Samsung No,Nexus No,12
+US Cellular,$100 ,$400 ,4G No,Retail Yes,Apple Yes,Samsung Yes,Nexus Yes,7
+AT&T,$100 ,$100 ,4G No,Retail No,Apple No,Samsung No,Nexus No,5
+US Cellular,$200 ,$100 ,4G Yes,Retail Yes,Apple No,Samsung No,Nexus Yes,11
+AT&T,$300 ,$200 ,4G Yes,Retail Yes,Apple No,Samsung Yes,Nexus Yes,13
+US Cellular,$400 ,$200 ,4G No,Retail No,Apple No,Samsung Yes,Nexus No,16
+T-mobile,$100 ,$300 ,4G Yes,Retail Yes,Apple No,Samsung Yes,Nexus No,6
+Verizon,$200 ,$300 ,4G No,Retail No,Apple No,Samsung Yes,Nexus Yes,14
+Verizon,$400 ,$400 ,4G Yes,Retail Yes,Apple No,Samsung No,Nexus No,15
+T-mobile,$300 ,$400 ,4G No,Retail No,Apple No,Samsung No,Nexus Yes,10
